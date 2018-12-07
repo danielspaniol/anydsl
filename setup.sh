@@ -7,58 +7,50 @@ COLOR_RESET="\033[0m"
 echo ">>> update setup project"
 git fetch origin
 
-UPSTREAM=${1:-'@{u}'}
-LOCAL=$(git rev-parse @)
-REMOTE=$(git rev-parse "$UPSTREAM")
-BASE=$(git merge-base @ "$UPSTREAM")
+#UPSTREAM=${1:-'@{u}'}
+#LOCAL=$(git rev-parse @)
+#REMOTE=$(git rev-parse "$UPSTREAM")
+#BASE=$(git merge-base @ "$UPSTREAM")
 
-if [ $LOCAL = $REMOTE ]; then
-    echo "your branch is up-to-date"
-elif [ $LOCAL = $BASE ]; then
-    echo "your branch is behind your tracking branch"
-    echo "I pull and rerun the script "
-    git pull
-    ./$0
-    exit $?
-elif [ $REMOTE = $BASE ]; then
-    echo "your branch is ahead of your tracking branch"
-    echo "remember to push your changes but I will run the script anyway"
-else
-    echo "your branch and your tracking remote branch have diverged"
-    echo "resolve all conflicts before rerunning the script"
-    exit 1
-fi
-
-if [ ! -e config.sh ]; then
-    echo "first configure your build:"
-    echo "cp config.sh.template config.sh"
-    echo "edit config.sh"
-    exit -1
-fi
+#if [ $LOCAL = $REMOTE ]; then
+#    echo "your branch is up-to-date"
+#elif [ $LOCAL = $BASE ]; then
+#    echo "your branch is behind your tracking branch"
+#    echo "I pull and rerun the script "
+#    git pull
+#    ./$0
+#    exit $?
+#elif [ $REMOTE = $BASE ]; then
+#    echo "your branch is ahead of your tracking branch"
+#    echo "remember to push your changes but I will run the script anyway"
+#else
+#    echo "your branch and your tracking remote branch have diverged"
+#    echo "resolve all conflicts before rerunning the script"
+#    exit 1
+#fi
+#
+#if [ ! -e config.sh ]; then
+#    echo "first configure your build:"
+#    echo "cp config.sh.template config.sh"
+#    echo "edit config.sh"
+#    exit -1
+#fi
 
 source config.sh
 
 CUR=`pwd`
 
-function remote {
-    if $HTTPS; then
-        echo "https://github.com/$1"
-    else
-        echo "git@github.com:$1"
-    fi
-}
-
 function clone_or_update {
     branch=${3:-master}
     if [ ! -e "$2" ]; then
         echo ">>> clone $1/$2 $COLOR_RED($branch)$COLOR_RESET"
-        echo -e "git clone --recursive `remote $1/$2.git` --branch $branch"
-        git clone --recursive `remote $1/$2.git` --branch $branch
+        echo -e "git clone --recursive `https://github.com/$1/$2.git` --branch $branch"
+        git clone --recursive `https://github.com/$1/$2.git` --branch $branch
     else
         cd $2
         echo -e ">>> pull $1/$2 $COLOR_RED($branch)$COLOR_RESET"
         git fetch --tags origin
-        git checkout $branch
+        git checkout --recurse-submodules $branch
         set +e
         git symbolic-ref HEAD
         if [ $? -eq 0 ]; then
@@ -67,7 +59,6 @@ function clone_or_update {
         set -e
         cd ..
     fi
-    mkdir -p "$2"/build/
 }
 
 # fetch sources
@@ -94,8 +85,7 @@ if [ "${LLVM-}" == true ] ; then
     cd "${CUR}"
     cd llvm/tools
     clone_or_update cdl-saarland rv ${BRANCH_RV}
-    cd rv
-    git submodule update --init
+    mkdir -p rv/build/
     cd "${CUR}"
 
     # build llvm
@@ -110,10 +100,6 @@ else
     LLVM_VARS=-DCMAKE_DISABLE_FIND_PACKAGE_LLVM=TRUE
 fi
 
-if [ ! -e "${CUR}/half" ]; then
-    svn checkout svn://svn.code.sf.net/p/half/code/trunk half
-fi
-
 # source this file to put clang and impala in path
 cat > "${CUR}/project.sh" <<_EOF_
 export PATH="${CUR}/llvm_install/bin:${CUR}/impala/build/bin:\${PATH:-}"
@@ -122,23 +108,26 @@ _EOF_
 
 source "${CUR}/project.sh"
 
-# thorin
+# fetch impala/thorin/half
 cd "${CUR}"
-clone_or_update AnyDSL thorin ${BRANCH_THORIN}
-cd "${CUR}/thorin/build"
-cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ${LLVM_VARS} -DTHORIN_PROFILE:BOOL=${THORIN_PROFILE} -DHalf_DIR:PATH="${CUR}/half/include"
+clone_or_update AnyDSL impala ${BRANCH}
+mkdir -p impala/build
+mkdir -p impala/thorin/build
+
+# thorin
+cd "${CUR}/impala/thorin/build"
+cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ${LLVM_VARS} -DTHORIN_PROFILE:BOOL=${THORIN_PROFILE}"
 ${MAKE}
 
 # impala
-cd "${CUR}"
-clone_or_update AnyDSL impala ${BRANCH_IMPALA}
 cd "${CUR}/impala/build"
-cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DThorin_DIR:PATH="${CUR}/thorin/build/share/anydsl/cmake"
+cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE}"
 ${MAKE}
 
 # runtime
 cd "${CUR}"
 clone_or_update AnyDSL runtime ${BRANCH_RUNTIME}
+mkdir -p runtime/build
 cd "${CUR}/runtime/build"
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DRUNTIME_JIT:BOOL=${RUNTIME_JIT} -DImpala_DIR:PATH="${CUR}/impala/build/share/anydsl/cmake"
 ${MAKE}
@@ -146,6 +135,7 @@ ${MAKE}
 # configure stincilla but don't build yet
 cd "${CUR}"
 clone_or_update AnyDSL stincilla ${BRANCH_STINCILLA}
+mkdir -p stincilla/build
 cd "${CUR}/stincilla/build"
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DAnyDSL_runtime_DIR:PATH="${CUR}/runtime/build/share/anydsl/cmake" -DBACKEND:STRING="cpu"
 #${MAKE}
@@ -153,6 +143,7 @@ cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DAnyDSL_runtime_
 # configure traversal but don't build yet
 cd "${CUR}"
 clone_or_update AnyDSL traversal ${BRANCH_TRAVERSAL}
+mkdir -p traversal/build
 cd "${CUR}/traversal/build"
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DAnyDSL_runtime_DIR:PATH="${CUR}/runtime/build/share/anydsl/cmake"
 #${MAKE}
