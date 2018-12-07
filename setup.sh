@@ -5,35 +5,44 @@ COLOR_RED="\033[0;31m"
 COLOR_RESET="\033[0m"
 
 echo ">>> update setup project"
-git submodule init
 git fetch origin --recurse-submodules=yes
+git submodule update --init --recursive
 
 UPSTREAM=${1:-'@{u}'}
 LOCAL=$(git rev-parse @)
 REMOTE=$(git rev-parse "$UPSTREAM")
 BASE=$(git merge-base @ "$UPSTREAM")
 
+function red_echo {
+    echo -e "${COLOR_RED}!!! $1${COLOR_RESET}"
+}
+
+function mkdir_cd {
+    mkdir -p $1
+    cd $1
+}
+
 if [ $LOCAL = $REMOTE ]; then
-    echo "your branch is up-to-date"
+    red_echo "your branch is up-to-date"
 elif [ $LOCAL = $BASE ]; then
-    echo "your branch is behind your tracking branch"
-    echo "I pull and rerun the script "
+    red_echo "your branch is behind your tracking branch"
+    red_echo "I pull and rerun the script "
     git pull --recurse-submodules=yes
     ./$0
     exit $?
 elif [ $REMOTE = $BASE ]; then
-    echo "your branch is ahead of your tracking branch"
-    echo "remember to push your changes but I will run the script anyway"
+    red_echo "your branch is ahead of your tracking branch"
+    red_echo "remember to push your changes but I will run the script anyway"
 else
-    echo "your branch and your tracking remote branch have diverged"
-    echo "resolve all conflicts before rerunning the script"
+    red_echo "your branch and your tracking remote branch have diverged"
+    red_echo "resolve all conflicts before rerunning the script"
     exit 1
 fi
 
 if [ ! -e config.sh ]; then
-    echo "first configure your build:"
-    echo "cp config.sh.template config.sh"
-    echo "edit config.sh"
+    red_echo "first configure your build:"
+    red_echo "cp config.sh.template config.sh"
+    red_echo "edit config.sh"
     exit -1
 fi
 
@@ -44,8 +53,7 @@ CUR=`pwd`
 function clone_or_update {
     branch=${3:-master}
     if [ ! -e "$2" ]; then
-        echo ">>> clone $1/$2 $COLOR_RED($branch)$COLOR_RESET"
-        echo -e "git clone --recursive `https://github.com/$1/$2.git` --branch $branch"
+        echo -e ">>> clone $1/$2 $COLOR_RED($branch)$COLOR_RESET"
         git clone --recursive `https://github.com/$1/$2.git` --branch $branch
     else
         cd $2
@@ -110,15 +118,13 @@ _EOF_
 source "${CUR}/project.sh"
 
 # thorin
-mkdir -p "${CUR}/impala/thorin/build
-cd "${CUR}/impala/thorin/build"
-cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ${LLVM_VARS} -DTHORIN_PROFILE:BOOL=${THORIN_PROFILE}"
+mkdir_cd "${CUR}/impala/thorin/build"
+cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ${LLVM_VARS} -DTHORIN_PROFILE:BOOL=${THORIN_PROFILE}
 ${MAKE}
 
 # impala
-mkdir -p "${CUR}/impala/build
-cd "${CUR}/impala/build"
-cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE}"
+mkdir_cd "${CUR}/impala/build"
+cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE}
 ${MAKE}
 
 # runtime
@@ -132,21 +138,19 @@ ${MAKE}
 # configure stincilla but don't build yet
 cd "${CUR}"
 clone_or_update AnyDSL stincilla ${BRANCH_STINCILLA}
-mkdir -p stincilla/build
-cd "${CUR}/stincilla/build"
+mkdir_cd stincilla/build
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DAnyDSL_runtime_DIR:PATH="${CUR}/runtime/build/share/anydsl/cmake" -DBACKEND:STRING="cpu"
 #${MAKE}
 
 # configure traversal but don't build yet
 cd "${CUR}"
 clone_or_update AnyDSL traversal ${BRANCH_TRAVERSAL}
-mkdir -p traversal/build
-cd "${CUR}/traversal/build"
+mkdir_cd traversal/build
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DAnyDSL_runtime_DIR:PATH="${CUR}/runtime/build/share/anydsl/cmake"
 #${MAKE}
 
 cd "${CUR}"
 
 echo
-echo "!!! Use the following command in order to have 'impala' and 'clang' in your path:"
-echo "!!! source project.sh"
+red_echo "Use the following command in order to have 'impala' and 'clang' in your path:"
+red_echo "source project.sh"
