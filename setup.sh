@@ -152,5 +152,11 @@ cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DAnyDSL_runtime_
 cd "${CUR}"
 
 echo
+red_echo "As a developer you probably want to use this git configuration in order to use SSH instead of HTTPS:"
+red_echo "> git config --global url.ssh://git@github.com/.insteadOf https://github.com/"
+red_echo "This switch automatically recurses through submodule"
+red_echo "> git config --global submodule.recurse true"
+
+echo
 red_echo "Use the following command in order to have 'impala' and 'clang' in your path:"
 red_echo "source project.sh"
