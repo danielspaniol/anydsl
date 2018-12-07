@@ -1,0 +1,3 @@
+[submodule "impala"]
+	path = impala
+	url = https://github.com/AnyDSL/impala.git

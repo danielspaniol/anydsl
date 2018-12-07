@@ -5,36 +5,37 @@ COLOR_RED="\033[0;31m"
 COLOR_RESET="\033[0m"
 
 echo ">>> update setup project"
-git fetch origin
+git submodule init
+git fetch origin --recurse-submodules=yes
 
-#UPSTREAM=${1:-'@{u}'}
-#LOCAL=$(git rev-parse @)
-#REMOTE=$(git rev-parse "$UPSTREAM")
-#BASE=$(git merge-base @ "$UPSTREAM")
+UPSTREAM=${1:-'@{u}'}
+LOCAL=$(git rev-parse @)
+REMOTE=$(git rev-parse "$UPSTREAM")
+BASE=$(git merge-base @ "$UPSTREAM")
 
-#if [ $LOCAL = $REMOTE ]; then
-#    echo "your branch is up-to-date"
-#elif [ $LOCAL = $BASE ]; then
-#    echo "your branch is behind your tracking branch"
-#    echo "I pull and rerun the script "
-#    git pull
-#    ./$0
-#    exit $?
-#elif [ $REMOTE = $BASE ]; then
-#    echo "your branch is ahead of your tracking branch"
-#    echo "remember to push your changes but I will run the script anyway"
-#else
-#    echo "your branch and your tracking remote branch have diverged"
-#    echo "resolve all conflicts before rerunning the script"
-#    exit 1
-#fi
-#
-#if [ ! -e config.sh ]; then
-#    echo "first configure your build:"
-#    echo "cp config.sh.template config.sh"
-#    echo "edit config.sh"
-#    exit -1
-#fi
+if [ $LOCAL = $REMOTE ]; then
+    echo "your branch is up-to-date"
+elif [ $LOCAL = $BASE ]; then
+    echo "your branch is behind your tracking branch"
+    echo "I pull and rerun the script "
+    git pull --recurse-submodules=yes
+    ./$0
+    exit $?
+elif [ $REMOTE = $BASE ]; then
+    echo "your branch is ahead of your tracking branch"
+    echo "remember to push your changes but I will run the script anyway"
+else
+    echo "your branch and your tracking remote branch have diverged"
+    echo "resolve all conflicts before rerunning the script"
+    exit 1
+fi
+
+if [ ! -e config.sh ]; then
+    echo "first configure your build:"
+    echo "cp config.sh.template config.sh"
+    echo "edit config.sh"
+    exit -1
+fi
 
 source config.sh
 
@@ -108,18 +109,14 @@ _EOF_
 
 source "${CUR}/project.sh"
 
-# fetch impala/thorin/half
-cd "${CUR}"
-clone_or_update AnyDSL impala ${BRANCH}
-mkdir -p impala/build
-mkdir -p impala/thorin/build
-
 # thorin
+mkdir -p "${CUR}/impala/thorin/build
 cd "${CUR}/impala/thorin/build"
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ${LLVM_VARS} -DTHORIN_PROFILE:BOOL=${THORIN_PROFILE}"
 ${MAKE}
 
 # impala
+mkdir -p "${CUR}/impala/build
 cd "${CUR}/impala/build"
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE}"
 ${MAKE}
