@@ -149,7 +149,7 @@ source "${CUR}/project.sh"
 
 # thorin
 cd "${CUR}"
-clone_or_update AnyDSL thorin ${BRANCH_THORIN}
+clone_or_update danielspaniol thorin ${BRANCH_THORIN}
 cd "${CUR}/thorin/build"
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} ${LLVM_VARS} -DTHORIN_PROFILE:BOOL=${THORIN_PROFILE} -DHalf_DIR:PATH="${CUR}/half/include"
 ${MAKE}
@@ -163,14 +163,14 @@ ${MAKE}
 
 # impala
 cd "${CUR}"
-clone_or_update AnyDSL impala ${BRANCH_IMPALA}
+clone_or_update danielspaniol impala ${BRANCH_IMPALA}
 cd "${CUR}/impala/build"
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DThorin_DIR:PATH="${CUR}/thorin/build/share/anydsl/cmake"
 ${MAKE}
 
 # runtime
 cd "${CUR}"
-clone_or_update AnyDSL runtime ${BRANCH_RUNTIME}
+clone_or_update danielspaniol runtime ${BRANCH_RUNTIME}
 cd "${CUR}/runtime/build"
 cmake .. ${CMAKE_MAKE} -DCMAKE_BUILD_TYPE:STRING=${BUILD_TYPE} -DRUNTIME_JIT:BOOL=${RUNTIME_JIT} -DArtic_DIR:PATH="${CUR}/artic/build/share/anydsl/cmake" -DImpala_DIR:PATH="${CUR}/impala/build/share/anydsl/cmake"
 ${MAKE}
